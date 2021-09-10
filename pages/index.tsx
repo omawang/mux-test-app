@@ -1,11 +1,13 @@
+import { GetServerSideProps, NextPage } from 'next';
 import React, { useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import Layout from '../components/Layout';
+import Mux, { JWT } from '@mux/mux-node';
 
-const IndexPage = () => {
+const IndexPage: NextPage<{ playbackId: string; token: string }> = ({ playbackId, token }) => {
   const videoRef = useRef(null);
-  const playbackId = 'o2krrNTBDIeUy2GCBp6XxZiodDDh7b0202e2qsWDoV402k';
-  const src = `https://stream.mux.com/${playbackId}.m3u8`;
+
+  const src = `https://stream.mux.com/${playbackId}.m3u8?token=${token}`;
 
   useEffect(() => {
     let hls;
@@ -36,13 +38,36 @@ const IndexPage = () => {
     <>
       <h1>Hello Next.js 👋</h1>
 
-      <video
-        controls
-        ref={videoRef}
-        style={{ width: '100%', maxWidth: '500px' }}
-      />
+      <video controls ref={videoRef} style={{ width: '100%', maxWidth: '500px' }} />
     </>
   );
 };
 
 export default IndexPage;
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { Video } = new Mux(process.env.MUX_TOKEN_ID, process.env.MUX_TOKEN_SECRET);
+  const signedPlayback = await Video.Assets.createPlaybackId(
+    'KAgCVZ8XwvmjoPl1LxvPx8YAh4H02MeGpmXCNuvQN65w',
+    { policy: 'signed' }
+  );
+
+  const signingKey = await Video.SigningKeys.create();
+  
+  const baseOptions = {
+    keyId: signingKey.id, // Enter your signing key id here
+    keySecret: signingKey.private_key, // Enter your base64 encoded private key here
+    expiration: '1d', // E.g 60, "2 days", "10h", "7d", numeric value interpreted as seconds
+  };
+  const finalToken = JWT.sign(signedPlayback.id, {
+    ...baseOptions,
+    type: 'video',
+  });
+
+  return {
+    props: {
+      playbackId: signedPlayback.id,
+      token: finalToken,
+    },
+  };
+};

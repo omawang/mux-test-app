@@ -7,6 +7,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
+    "@mux/mux-node": "^3.2.3",
     "hls.js": "^1.0.10",
     "isomorphic-fetch": "^3.0.0",
     "js-base64": "^3.7.0",
